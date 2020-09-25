@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
@@ -33,6 +34,17 @@ namespace WebAppHealthChecks
                     name: "mongo",
                     failureStatus: HealthStatus.Unhealthy); //adding MongoDb Health Check
 
+            services.AddHealthChecksUI(opt =>
+            {
+                opt.SetEvaluationTimeInSeconds(15);
+                opt.MaximumHistoryEntriesPerEndpoint(60);
+                opt.SetHeaderText("Health Check UIIIII");
+                opt.SetApiMaxActiveRequests(1);
+                opt.DisableDatabaseMigrations();
+
+                opt.AddHealthCheckEndpoint("endpoint1", "/healthz");
+            })
+            .AddInMemoryStorage();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -65,6 +77,14 @@ namespace WebAppHealthChecks
                            await context.Response.WriteAsync(result);
                        }
                    });
+
+                endpoints.MapHealthChecks("/healthz", new HealthCheckOptions
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
+
+                endpoints.MapHealthChecksUI();
 
                 endpoints.MapGet("/", async context => await context.Response.WriteAsync("Hello World!"));
             });

@@ -34,15 +34,14 @@ namespace WebAppHealthChecks
                     name: "mongo",
                     failureStatus: HealthStatus.Unhealthy); //adding MongoDb Health Check
 
+            //adding healthchecks UI
             services.AddHealthChecksUI(opt =>
             {
-                opt.SetEvaluationTimeInSeconds(15);
-                opt.MaximumHistoryEntriesPerEndpoint(60);
-                opt.SetHeaderText("Health Check UIIIII");
-                opt.SetApiMaxActiveRequests(1);
-                opt.DisableDatabaseMigrations();
+                opt.SetEvaluationTimeInSeconds(15); //time in seconds between check
+                opt.MaximumHistoryEntriesPerEndpoint(60); //maximum history of checks
+                opt.SetApiMaxActiveRequests(1); //api requests concurrency
 
-                opt.AddHealthCheckEndpoint("endpoint1", "/healthz");
+                opt.AddHealthCheckEndpoint("default api", "/healthz"); //map health check api
             })
             .AddInMemoryStorage();
         }
@@ -59,31 +58,14 @@ namespace WebAppHealthChecks
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHealthChecks("/healthcheck");
-                endpoints.MapHealthChecks("/hc",
-                   new HealthCheckOptions
-                   {
-                       ResponseWriter = async (context, report) =>
-                       {
-                           var result = JsonSerializer.Serialize(
-                               new
-                               {
-                                   status = report.Status.ToString(),
-                                   errors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
-                               });
-
-                           context.Response.ContentType = MediaTypeNames.Application.Json;
-
-                           await context.Response.WriteAsync(result);
-                       }
-                   });
-
+                //adding endpoint of health check for the health check ui in UI format
                 endpoints.MapHealthChecks("/healthz", new HealthCheckOptions
                 {
                     Predicate = _ => true,
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
 
+                //map healthcheck ui endpoing - default is /healthchecks-ui/
                 endpoints.MapHealthChecksUI();
 
                 endpoints.MapGet("/", async context => await context.Response.WriteAsync("Hello World!"));
